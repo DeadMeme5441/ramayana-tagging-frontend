@@ -1,30 +1,164 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAppContext } from '../../context/AppContext';
+import { fetchPopularMainTopics } from '../../services/api';
 
 const HomePage = () => {
-  // Dummy data for popular tags
-  const popularTags = [
-    { id: 1, name: 'कथा', count: 245, category: 'main' },
-    { id: 2, name: 'गुणः', count: 187, category: 'main' },
-    { id: 3, name: 'राज्यम्', count: 142, category: 'main' },
-    { id: 4, name: 'पात्रम्', count: 136, category: 'main' },
-    { id: 5, name: 'धर्मः', count: 129, category: 'main' },
-    { id: 6, name: 'युद्धम्', count: 118, category: 'main' },
-    { id: 7, name: 'वनवासः', count: 94, category: 'info' },
-    { id: 8, name: 'भक्तिः', count: 87, category: 'main' },
-    { id: 9, name: 'श्रीराम', count: 82, category: 'info' },
-    { id: 10, name: 'अयोध्या', count: 75, category: 'info' },
-  ];
+  const navigate = useNavigate();
+  const {
+    khandas,
+    uiState,
+    searchState,
+    updateSearch
+  } = useAppContext();
 
-  // Dummy data for khandas
-  const khandas = [
-    { id: 1, name: 'बालकाण्डम्', adhyayas: 77 },
-    { id: 2, name: 'अयोध्याकाण्डम्', adhyayas: 119 },
-    { id: 3, name: 'अरण्यकाण्डम्', adhyayas: 75 },
-    { id: 4, name: 'किष्किन्धाकाण्डम्', adhyayas: 67 },
-    { id: 5, name: 'सुन्दरकाण्डम्', adhyayas: 68 },
-    { id: 6, name: 'युद्धकाण्डम्', adhyayas: 128 },
-    { id: 7, name: 'उत्तरकाण्डम्', adhyayas: 111 },
-  ];
+// Local state for popular main topics (not stored in global context)
+  const [popularTopics, setPopularTopics] = useState([]);
+  const [topicsLoading, setTopicsLoading] = useState(false);
+  const [topicsError, setTopicsError] = useState(null);
+
+  // Local state for search input
+  const [searchInput, setSearchInput] = useState('');
+
+  // Track expanded topics for sample tags
+  const [expandedTopics, setExpandedTopics] = useState({});
+
+  // Fetch popular main topics on component mount
+  useEffect(() => {
+    const loadPopularTopics = async () => {
+      try {
+        setTopicsLoading(true);
+        // Fetch main topics with the most tags
+        const response = await fetchPopularMainTopics(10); // Get top 10 topics
+
+        if (response && response.popular_topics) {
+          setPopularTopics(response.popular_topics);
+        }
+        setTopicsError(null);
+      } catch (error) {
+        console.error('Error loading popular topics:', error);
+        setTopicsError(error.message || 'Failed to load popular topics');
+      } finally {
+        setTopicsLoading(false);
+      }
+    };
+
+    loadPopularTopics();
+  }, []);
+
+  // Toggle expanded state for a topic
+  const toggleTopicExpansion = (topicName) => {
+    setExpandedTopics(prev => ({
+      ...prev,
+      [topicName]: !prev[topicName]
+    }));
+  };
+
+  // Handle search form submission
+  const handleSearch = (e) => {
+    e.preventDefault();
+
+    if (!searchInput.trim()) return;
+
+    // Update the global search state
+    updateSearch({
+      query: searchInput,
+      filters: {
+        ...searchState.filters,
+        khandaId: null,  // Reset any filters
+        adhyayaId: null,
+        skip: 0         // Start from the first page
+      }
+    });
+
+    // Navigate to search results page
+    navigate('/search');
+  };
+
+// Handle click on a popular tag or topic
+  const handleTopicClick = (topicName) => {
+    // Update the global search state with the topic as the query
+    updateSearch({
+      query: topicName,
+      filters: {
+        ...searchState.filters,
+        khandaId: null,  // Reset any filters
+        adhyayaId: null,
+        main_topic: topicName, // Filter by this main topic
+        skip: 0         // Start from the first page
+      }
+    });
+
+    // Navigate to search results page
+    navigate('/search');
+  };
+
+  // Handle click on a sample tag
+  const handleSampleTagClick = (tagName, event) => {
+    // Stop propagation to prevent the parent topic handler from firing
+    event.stopPropagation();
+
+    // Update the global search state with the specific tag as the query
+    updateSearch({
+      query: tagName,
+      filters: {
+        ...searchState.filters,
+        khandaId: null,  // Reset any filters
+        adhyayaId: null,
+        skip: 0         // Start from the first page
+      }
+    });
+
+    // Navigate to search results page
+    navigate('/search');
+  };
+
+  // Handle click on a khanda
+  const handleKhandaClick = (khandaId) => {
+    // For now just navigate to the first adhyaya
+    // In a more advanced implementation, we might want to show a list of adhyayas
+    if (khandas && khandas.length > 0) {
+      const khanda = khandas.find(k => k.id === khandaId);
+      if (khanda && khanda.adhyayas && khanda.adhyayas.length > 0) {
+        navigate(`/read/${khandaId}/${khanda.adhyayas[0].id}`);
+        return;
+      }
+    }
+
+    // Fallback if we couldn't find the first adhyaya
+    navigate(`/read/${khandaId}/1`);
+  };
+
+  // Render loading state for the entire page if khandas are loading
+  if (uiState.isLoading && khandas.length === 0) {
+    return (
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-900 mb-4"></div>
+          <p className="text-orange-900 text-xl">Loading Ramayana Tagging Engine...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render error state if there's a global error
+  if (uiState.error) {
+    return (
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center">
+        <div className="text-center bg-red-50 p-6 rounded-lg shadow-md max-w-md">
+          <div className="text-red-600 text-4xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-red-800 mb-2">Error Loading Data</h2>
+          <p className="text-red-700 mb-4">{uiState.error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-orange-700 text-white rounded-lg hover:bg-orange-800"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-amber-50">
@@ -48,48 +182,138 @@ const HomePage = () => {
           </p>
 
           {/* Search Bar */}
-          <div className="relative max-w-2xl mx-auto">
+          <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto">
             <input
               type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search for tags like कथा, धर्मः, or श्रीराम..."
               className="w-full px-6 py-3 rounded-full border-2 border-orange-300 focus:border-orange-500 focus:outline-none text-lg shadow-sm"
             />
-            <button className="absolute right-2 top-2 bg-orange-700 text-white p-2 rounded-full hover:bg-orange-800 transition">
+            <button
+              type="submit"
+              className="absolute right-2 top-2 bg-orange-700 text-white p-2 rounded-full hover:bg-orange-800 transition"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </button>
-          </div>
+          </form>
         </div>
 
-        {/* Popular Tags */}
+{/* Popular Topics */}
         <div className="mb-16">
-          <h3 className="text-xl font-serif font-bold text-orange-800 mb-4">Most Frequent Tags</h3>
-          <div className="flex flex-wrap gap-2">
-            {popularTags.map(tag => (
+          <h3 className="text-xl font-serif font-bold text-orange-800 mb-4">Most Popular Categories</h3>
+
+          {/* Topics loading state */}
+          {topicsLoading && (
+            <div className="flex justify-center py-4">
+              <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-orange-700"></div>
+            </div>
+          )}
+
+          {/* Topics error state */}
+          {topicsError && (
+            <div className="bg-red-50 p-3 rounded-lg text-red-700 mb-4">
+              <p>Error loading topics: {topicsError}</p>
               <button
-                key={tag.id}
-                className="px-4 py-2 bg-orange-100 text-orange-800 rounded-lg hover:bg-orange-200 transition font-serif"
+                onClick={() => window.location.reload()}
+                className="text-red-800 underline mt-1"
               >
-                {tag.name} <span className="text-sm text-orange-600">({tag.count})</span>
+                Retry
               </button>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {/* Topics content */}
+          {!topicsLoading && !topicsError && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {popularTopics.length > 0 ? (
+                popularTopics.map(topic => (
+                  <div
+                    key={topic.name}
+                    className="bg-white rounded-lg border border-orange-200 overflow-hidden hover:shadow-md transition"
+                  >
+                    <div
+                      onClick={() => handleTopicClick(topic.name)}
+                      className="px-4 py-3 bg-orange-100 flex justify-between items-center cursor-pointer hover:bg-orange-200 transition"
+                    >
+                      <div className="flex-1">
+                        <span className="font-serif font-bold text-orange-900">{topic.name}</span>
+                        <div className="text-sm text-orange-700">
+                          <span className="mr-2">{topic.tag_count} unique tags</span>
+                          <span>({topic.total_occurrences} total occurrences)</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTopicExpansion(topic.name);
+                        }}
+                        className="text-orange-700 hover:text-orange-900"
+                      >
+                        {expandedTopics[topic.name] ?
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                          </svg> :
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        }
+                      </button>
+                    </div>
+
+                    {/* Sample Tags */}
+                    {expandedTopics[topic.name] && topic.sample_tags && topic.sample_tags.length > 0 && (
+                      <div className="p-3 bg-orange-50">
+                        <div className="text-xs text-orange-700 mb-2">Sample Tags:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {topic.sample_tags.map((tag, index) => (
+                            <button
+                              key={index}
+                              onClick={(e) => handleSampleTagClick(tag, e)}
+                              className="px-2 py-1 text-sm bg-white text-orange-800 border border-orange-300 rounded hover:bg-orange-100 transition"
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-orange-700 italic col-span-2">No topics found. The database may be empty or still indexing.</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Khandas Navigation */}
         <div>
           <h3 className="text-xl font-serif font-bold text-orange-800 mb-4">Browse by Khanda</h3>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {khandas.map(khanda => (
-              <div key={khanda.id} className="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-600 hover:shadow-lg transition">
-                <h4 className="text-lg font-serif font-bold text-orange-900 mb-2">{khanda.name}</h4>
-                <p className="text-orange-700">{khanda.adhyayas} adhyayas</p>
-                <button className="mt-3 text-orange-600 hover:text-orange-800 font-medium">
-                  Explore {khanda.id === 1 ? 'Bala Kanda' : '→'}
-                </button>
+            {khandas.length > 0 ? (
+              khandas.map(khanda => (
+                <div
+                  key={khanda.id}
+                  className="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-600 hover:shadow-lg transition cursor-pointer"
+                  onClick={() => handleKhandaClick(khanda.id)}
+                >
+                  <h4 className="text-lg font-serif font-bold text-orange-900 mb-2">{khanda.name}</h4>
+                  <p className="text-orange-700">{khanda.adhyaya_count || khanda.adhyayas?.length || 0} adhyayas</p>
+                  <button className="mt-3 text-orange-600 hover:text-orange-800 font-medium">
+                    Explore {khanda.id === 1 ? 'Bala Kanda' : '→'}
+                  </button>
+                </div>
+              ))
+            ) : (
+              // Empty state if no khandas found
+              <div className="col-span-3 text-center py-8">
+                <p className="text-orange-700 italic">No khandas found. The database may be empty or still indexing.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
