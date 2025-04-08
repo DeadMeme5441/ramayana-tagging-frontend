@@ -24,8 +24,56 @@ jobs:
         run: |
           sed -i 's|const API_BASE_URL = import.meta.env.VITE_API_BASE_URL.*|const API_BASE_URL = "/api";|' src/services/api.js
 
-      - name: Deploy to DigitalOcean
+      - name: Verify and create deployment directory
+        run: ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}/frontend && ls -la ${{ secrets.DEPLOY_PATH }}"
+
+      - name: Create Nginx configuration
         run: |
-          ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}/frontend"
-          scp -r Dockerfile.frontend nginx.conf ./* ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/frontend/
-          ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && docker compose up -d --build frontend"
+          cat > nginx.conf << 'EOL'
+          server {
+              listen 80;
+              server_name localhost;
+
+              location / {
+                  root /usr/share/nginx/html;
+                  index index.html;
+                  try_files $uri $uri/ /index.html;
+              }
+
+              location /api {
+                  proxy_pass http://backend:8000/api;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+          EOL
+
+      - name: Copy frontend files
+        run: |
+          # Copy core files individually
+          scp Dockerfile.frontend ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/frontend/
+          scp nginx.conf ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/frontend/
+          scp package.json ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/frontend/
+
+          # Copy directories
+          scp -r src ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/frontend/
+          scp -r public ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/frontend/
+
+          # Check if bun.lockb exists and copy if it does
+          if [ -f "bun.lockb" ]; then
+            scp bun.lockb ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/frontend/
+          fi
+
+          # Copy any other necessary files
+          if [ -f "index.html" ]; then
+            scp index.html ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/frontend/
+          fi
+
+          if [ -f "vite.config.js" ]; then
+            scp vite.config.js ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/frontend/
+          fi
+
+      - name: Start container
+        run: ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && docker compose up -d --build frontend"
