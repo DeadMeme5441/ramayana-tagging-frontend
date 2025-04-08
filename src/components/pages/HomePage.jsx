@@ -29,7 +29,7 @@ const HomePage = () => {
       try {
         setTopicsLoading(true);
         // Fetch main topics with the most tags
-        const response = await fetchPopularMainTopics(10); // Get top 10 topics
+        const response = await fetchPopularMainTopics(5); // Get top 10 topics
 
         if (response && response.popular_topics) {
           setPopularTopics(response.popular_topics);
@@ -201,9 +201,9 @@ const HomePage = () => {
           </form>
         </div>
 
-{/* Popular Topics */}
+        {/* Popular Topics */}
         <div className="mb-16">
-          <h3 className="text-xl font-serif font-bold text-orange-800 mb-4">Most Popular Categories</h3>
+          <h3 className="text-xl font-serif font-bold text-orange-800 mb-4">Most Frequent Tags</h3>
 
           {/* Topics loading state */}
           {topicsLoading && (
@@ -225,9 +225,9 @@ const HomePage = () => {
             </div>
           )}
 
-          {/* Topics content */}
+          {/* Topics content - single column layout */}
           {!topicsLoading && !topicsError && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
               {popularTopics.length > 0 ? (
                 popularTopics.map(topic => (
                   <div
@@ -242,7 +242,6 @@ const HomePage = () => {
                         <span className="font-serif font-bold text-orange-900">{topic.name}</span>
                         <div className="text-sm text-orange-700">
                           <span className="mr-2">{topic.tag_count} unique tags</span>
-                          <span>({topic.total_occurrences} total occurrences)</span>
                         </div>
                       </div>
                       <button
@@ -263,58 +262,36 @@ const HomePage = () => {
                       </button>
                     </div>
 
-                    {/* Sample Tags */}
-                    {expandedTopics[topic.name] && topic.sample_tags && topic.sample_tags.length > 0 && (
-                      <div className="p-3 bg-orange-50">
-                        <div className="text-xs text-orange-700 mb-2">Sample Tags:</div>
-                        <div className="flex flex-wrap gap-2">
-                          {topic.sample_tags.map((tag, index) => (
-                            <button
+                    {/* Subject Info Section */}
+                    {expandedTopics[topic.name] && topic.subject_info && topic.subject_info.length > 0 && (
+                      <div className="p-4 bg-orange-50">
+                        <div className="text-xs text-orange-700 mb-2">Subject Information:</div>
+                        <ul className="space-y-1">
+                          {topic.subject_info.map((info, index) => (
+                            <li
                               key={index}
-                              onClick={(e) => handleSampleTagClick(tag, e)}
-                              className="px-2 py-1 text-sm bg-white text-orange-800 border border-orange-300 rounded hover:bg-orange-100 transition"
+                              className="px-3 py-2 bg-white text-orange-800 border border-orange-200 rounded-md font-serif text-sm"
                             >
-                              {tag}
-                            </button>
+                              {info}
+                            </li>
                           ))}
-                        </div>
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Empty state for subject info */}
+                    {expandedTopics[topic.name] && (!topic.subject_info || topic.subject_info.length === 0) && (
+                      <div className="p-4 bg-orange-50 text-orange-700 italic text-sm">
+                        No subject information available for this topic.
                       </div>
                     )}
                   </div>
                 ))
               ) : (
-                <p className="text-orange-700 italic col-span-2">No topics found. The database may be empty or still indexing.</p>
+                <p className="text-orange-700 italic">No topics found. The database may be empty or still indexing.</p>
               )}
             </div>
           )}
-        </div>
-
-        {/* Khandas Navigation */}
-        <div>
-          <h3 className="text-xl font-serif font-bold text-orange-800 mb-4">Browse by Khanda</h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {khandas.length > 0 ? (
-              khandas.map(khanda => (
-                <div
-                  key={khanda.id}
-                  className="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-600 hover:shadow-lg transition cursor-pointer"
-                  onClick={() => handleKhandaClick(khanda.id)}
-                >
-                  <h4 className="text-lg font-serif font-bold text-orange-900 mb-2">{khanda.name}</h4>
-                  <p className="text-orange-700">{khanda.adhyaya_count || khanda.adhyayas?.length || 0} adhyayas</p>
-                  <button className="mt-3 text-orange-600 hover:text-orange-800 font-medium">
-                    Explore {khanda.id === 1 ? 'Bala Kanda' : '→'}
-                  </button>
-                </div>
-              ))
-            ) : (
-              // Empty state if no khandas found
-              <div className="col-span-3 text-center py-8">
-                <p className="text-orange-700 italic">No khandas found. The database may be empty or still indexing.</p>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Tagging System Explanation */}
