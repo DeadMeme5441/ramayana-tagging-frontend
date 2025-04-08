@@ -19,7 +19,7 @@ const SanskritTextRenderer = ({ content, activeTag, structuredTags, contentRef }
   if (!activeTag) {
     return (
       <div ref={contentRef} className="text-lg leading-relaxed font-serif">
-        {content.split('\n\n').map((paragraph, idx) => (
+        {content.split('\n').map((paragraph, idx) => (
           <p key={idx} className="mb-4">{paragraph}</p>
         ))}
       </div>
@@ -30,7 +30,7 @@ const SanskritTextRenderer = ({ content, activeTag, structuredTags, contentRef }
   if (!structuredTags || !structuredTags.position_map) {
     return (
       <div ref={contentRef} className="text-lg leading-relaxed font-serif">
-        {content.split('\n\n').map((paragraph, idx) => (
+        {content.split('\n').map((paragraph, idx) => (
           <p key={idx} className="mb-4">{paragraph}</p>
         ))}
       </div>
@@ -46,7 +46,7 @@ const SanskritTextRenderer = ({ content, activeTag, structuredTags, contentRef }
   if (highlightPositions.length === 0) {
     return (
       <div ref={contentRef} className="text-lg leading-relaxed font-serif">
-        {content.split('\n\n').map((paragraph, idx) => (
+        {content.split('\n').map((paragraph, idx) => (
           <p key={idx} className="mb-4">{paragraph}</p>
         ))}
       </div>
@@ -71,7 +71,8 @@ const SanskritTextRenderer = ({ content, activeTag, structuredTags, contentRef }
     segments.push({
       text: content.substring(pos.start, pos.end),
       isHighlighted: true,
-      key: `highlight-${index}`
+      key: `highlight-${index}`,
+      position: { start: pos.start, end: pos.end }
     });
 
     lastEnd = pos.end;
@@ -94,7 +95,7 @@ const SanskritTextRenderer = ({ content, activeTag, structuredTags, contentRef }
   // Process each segment
   segments.forEach(segment => {
     // Split segment text by paragraph breaks
-    const paragraphParts = segment.text.split('\n\n');
+    const paragraphParts = segment.text.split('\n');
 
     // Add first part to current paragraph
     currentParagraphSegments.push({
@@ -149,8 +150,7 @@ const SanskritTextRenderer = ({ content, activeTag, structuredTags, contentRef }
         {currentParagraphSegments.map(part =>
           part.isHighlighted ?
             <span key={part.key} className="bg-amber-200 rounded px-0.5">{part.text}</span> :
-            <span key={part.key}>{part.text}
-          </span>
+            <span key={part.key}>{part.text}</span>
         )}
       </p>
     );

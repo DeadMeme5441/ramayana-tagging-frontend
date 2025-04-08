@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import TagList from './TagList';
 
 /**
  * Sidebar component for displaying and navigating tags in an adhyaya
@@ -10,15 +11,6 @@ import React, { useState } from 'react';
  */
 const TagSidebar = ({ structuredTags, activeTag, onTagClick }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState({});
-
-  // Toggle category expansion
-  const toggleCategory = (category) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [category]: !prev[category]
-    }));
-  };
 
   // Check if we have tags
   const hasCategories = structuredTags &&
@@ -64,16 +56,6 @@ const TagSidebar = ({ structuredTags, activeTag, onTagClick }) => {
   // Get filtered categories
   const filteredCategories = hasCategories ? filterTags() : {};
 
-  // Display tag name or subject info
-  const getDisplayName = (tag) => {
-    if (tag.subject_info && tag.subject_info.length > 0) {
-      return tag.subject_info.join(' • ');
-    }
-
-    // If no subject info, use tag name (without category prefix if present)
-    return tag.name.includes(';') ? tag.name.split(';')[1] : tag.name;
-  };
-
   return (
     <div className="w-64 bg-white border-l border-orange-200 overflow-hidden flex flex-col h-full">
       <div className="p-4 border-b border-orange-200">
@@ -105,34 +87,11 @@ const TagSidebar = ({ structuredTags, activeTag, onTagClick }) => {
       <div className="p-2 overflow-y-auto flex-grow">
         {hasCategories ? (
           Object.keys(filteredCategories).length > 0 ? (
-            Object.entries(filteredCategories).map(([category, tags]) => (
-              <div key={category} className="mb-4">
-                <div
-                  className="font-medium text-orange-900 px-2 py-1 bg-orange-50 mb-1 rounded flex justify-between items-center cursor-pointer"
-                  onClick={() => toggleCategory(category)}
-                >
-                  <span>{category}</span>
-                  <span className="text-xs text-orange-700">{tags.length}</span>
-                </div>
-
-                {/* Show tags if category is expanded or not specified in state */}
-                {(expandedCategories[category] !== false) && (
-                  <ul className="pl-2">
-                    {tags.map(tag => (
-                      <li
-                        key={tag.name}
-                        className={`py-1 px-2 text-sm cursor-pointer rounded ${
-                          activeTag === tag.name ? 'bg-orange-100 font-medium' : 'hover:bg-orange-50'
-                        }`}
-                        onClick={() => onTagClick(tag.name)}
-                      >
-                        {getDisplayName(tag)}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))
+            <TagList
+              categories={filteredCategories}
+              activeTag={activeTag}
+              onTagClick={onTagClick}
+            />
           ) : (
             <div className="p-4 text-center text-orange-700 italic">
               No tags match your filter

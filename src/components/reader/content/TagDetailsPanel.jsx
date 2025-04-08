@@ -18,9 +18,40 @@ const TagDetailsPanel = ({
 }) => {
   const navigate = useNavigate();
 
+  // Don't render anything if the panel is closed or there are no tag details
   if (!isOpen || !tagDetails) {
     return null;
   }
+
+  // Helper to generate an export file name
+  const getExportFileName = () => {
+    const tagName = tagDetails.tag_name.replace(/[^a-z0-9]/gi, '_');
+    return `tag-${tagName}.txt`;
+  };
+
+  // Helper to generate exportable content
+  const generateExportContent = () => {
+    return `
+Tag: ${tagDetails.tag_name}
+${tagDetails.main_topics?.length ? 'Categories: ' + tagDetails.main_topics.join(', ') : ''}
+${tagDetails.subject_info?.length ? 'Subject: ' + tagDetails.subject_info.join(' • ') : ''}
+Occurrences: ${tagDetails.occurrences?.length || 0}
+`.trim();
+  };
+
+  // Handle exporting tag information
+  const handleExport = () => {
+    const content = generateExportContent();
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = getExportFileName();
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="fixed bottom-0 inset-x-0 mx-auto max-w-5xl bg-white border-t border-orange-200 shadow-lg p-4 transition-all duration-300 ease-in-out rounded-t-lg">
@@ -39,6 +70,7 @@ const TagDetailsPanel = ({
 
       <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-grow">
+          {/* Main topics/categories */}
           {tagDetails.main_topics && tagDetails.main_topics.length > 0 && (
             <div className="mb-2">
               <span className="text-orange-700 font-medium">Categories: </span>
@@ -50,6 +82,7 @@ const TagDetailsPanel = ({
             </div>
           )}
 
+          {/* Subject information */}
           {tagDetails.subject_info && tagDetails.subject_info.length > 0 && (
             <p className="text-orange-800 mb-2">
               <span className="font-medium">Subject: </span>
@@ -57,6 +90,7 @@ const TagDetailsPanel = ({
             </p>
           )}
 
+          {/* Occurrence count */}
           <p className="text-sm text-orange-700">
             Appears {tagDetails.occurrences?.length || 0} times in this adhyaya
           </p>
@@ -91,6 +125,7 @@ const TagDetailsPanel = ({
           )}
         </div>
 
+        {/* Action buttons */}
         <div className="flex flex-col gap-2">
           <button
             className="px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm whitespace-nowrap"
@@ -99,29 +134,9 @@ const TagDetailsPanel = ({
             Search All Occurrences
           </button>
 
-          {/* Export option */}
           <button
             className="px-3 py-1 bg-orange-100 text-orange-800 rounded hover:bg-orange-200 text-sm whitespace-nowrap"
-            onClick={() => {
-              // Create a text version of the tag information
-              const content = `
-                Tag: ${tagDetails.tag_name}
-                ${tagDetails.main_topics?.length ? 'Categories: ' + tagDetails.main_topics.join(', ') : ''}
-                ${tagDetails.subject_info?.length ? 'Subject: ' + tagDetails.subject_info.join(' • ') : ''}
-                Occurrences: ${tagDetails.occurrences?.length || 0}
-              `.trim();
-
-              // Create a blob and download link
-              const blob = new Blob([content], { type: 'text/plain' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `tag-${tagDetails.tag_name.replace(/[^a-z0-9]/gi, '_')}.txt`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            }}
+            onClick={handleExport}
           >
             Export Tag Info
           </button>
