@@ -20,6 +20,7 @@ const SemanticsBreakdown = () => {
         setIsLoading(true);
         // Fetch main topics with the most tags
         const response = await fetchPopularMainTopics(7);
+        console.log('Fetched popular main topics:', response.popular_topics);
 
         if (response && response.popular_topics) {
           setSemanticCategories(response.popular_topics);

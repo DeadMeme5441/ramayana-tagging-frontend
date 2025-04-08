@@ -35,8 +35,11 @@ const SearchResults = ({ results, onLoadMore }) => {
     <div>
       {/* Results statistics */}
       <div className="mb-4">
-        <p className="text-orange-800">
-          Found {getTotalResults()} matches across {results.statistics?.tag_count || 0} tags
+        <p className="text-orange-800 font-bold">
+          Found {results.pagination.total} Total Tags
+        </p>
+        <p className="text-orange-800 mt-2 ml-2">
+          Showing {results.results.length} of {results.pagination.total} tags
         </p>
       </div>
 

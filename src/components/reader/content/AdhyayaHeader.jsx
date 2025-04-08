@@ -67,7 +67,7 @@ const SargaHeader = ({
       {/* Active tag indicator */}
       {activeTag && (
         <div className="mt-2 bg-amber-200 px-3 py-1 rounded-md inline-flex items-center">
-          <span className="text-orange-800 font-medium mr-2">Active tag: {activeTag}</span>
+          <span className="text-orange-800 font-bold mr-2">Active tag: {activeTag}</span>
           <button
             onClick={onClearActiveTag}
             className="text-orange-600 hover:text-orange-800"

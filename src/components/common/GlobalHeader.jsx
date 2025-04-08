@@ -74,8 +74,8 @@ const GlobalHeader = () => {
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex flex-col">
-              <h1 className="text-2xl font-serif font-bold">रामायण तत्त्वानुक्रमणिका</h1>
-              <h2 className="text-lg">Ramayana Tagging Engine</h2>
+              <h1 className="text-2xl font-serif font-bold">रामायण विषयान्वेषणम्</h1>
+              <h2 className="text-lg">Ramayana Subject Tagging</h2>
             </Link>
           </div>
 
@@ -110,7 +110,7 @@ const GlobalHeader = () => {
                       className={`block mt-4 lg:inline-block lg:mt-0 hover:text-orange-200 cursor-pointer transition ${isActive('/read') ? 'text-orange-200 font-bold' : ''}`}
                       onMouseEnter={() => document.getElementById('khaandas-dropdown').classList.remove('hidden')}
                     >
-                      Browse Khaandas
+                      Browse Kaandas
                     </span>
                     {khandas && khandas.length > 0 && (
                       <div 

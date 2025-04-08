@@ -93,7 +93,7 @@ export const fetchMainTopics = async () => {
  * @param {number} [limit=5] - Maximum number of topics to return
  * @returns {Promise<Object>} - Popular topics with their tag counts and sample tags
  */
-export const fetchPopularMainTopics = async (limit = 5) => {
+export const fetchPopularMainTopics = async (limit = 10) => {
   return fetchWithErrorHandling(`/tags/popular-topics?limit=${limit}`);
 };
 
