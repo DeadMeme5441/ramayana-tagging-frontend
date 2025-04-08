@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./components/pages/HomePage";
 import SearchResultsPage from "./components/search/SearchResultsPage";
-import AdhyayaReader from "./components/pages/AdhyayaReader";
+import AdhyayaReader from "./components/reader/AdhyayaReader";
 import { AppProvider } from "./context/AppContext"; // Import our context provider
 
 function App() {
