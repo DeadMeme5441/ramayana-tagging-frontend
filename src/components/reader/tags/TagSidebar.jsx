@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TagList from './TagList';
 
 /**
@@ -7,9 +7,11 @@ import TagList from './TagList';
  * @param {Object} props
  * @param {Object} props.structuredTags - Tag data from the backend
  * @param {string|null} props.activeTag - Currently selected tag
+ * @param {Object|null} props.tagDetails - Details for the active tag
  * @param {Function} props.onTagClick - Handler for when a tag is clicked
  */
-const TagSidebar = ({ structuredTags, activeTag, onTagClick }) => {
+const TagSidebar = ({ structuredTags, activeTag, tagDetails, onTagClick }) => {
+  // Initialize search term as empty - don't use active tag
   const [searchTerm, setSearchTerm] = useState('');
 
   // Check if we have tags
@@ -57,9 +59,9 @@ const TagSidebar = ({ structuredTags, activeTag, onTagClick }) => {
   const filteredCategories = hasCategories ? filterTags() : {};
 
   return (
-    <div className="w-64 bg-white border-l border-orange-200 overflow-hidden flex flex-col h-full">
+    <div className="w-80 bg-white border-l border-orange-200 overflow-hidden flex flex-col h-full">
       <div className="p-4 border-b border-orange-200">
-        <h3 className="font-bold text-orange-900">Tags in this Adhyaya</h3>
+        <h3 className="font-bold text-orange-900 text-lg">Tags in this Sarga</h3>
 
         {/* Search input */}
         <div className="mt-2 relative">
@@ -90,6 +92,7 @@ const TagSidebar = ({ structuredTags, activeTag, onTagClick }) => {
             <TagList
               categories={filteredCategories}
               activeTag={activeTag}
+              tagDetails={tagDetails}
               onTagClick={onTagClick}
             />
           ) : (
@@ -99,7 +102,7 @@ const TagSidebar = ({ structuredTags, activeTag, onTagClick }) => {
           )
         ) : (
           <div className="p-4 text-center text-orange-700 italic">
-            No tags found in this adhyaya
+            No tags found in this sarga
           </div>
         )}
       </div>

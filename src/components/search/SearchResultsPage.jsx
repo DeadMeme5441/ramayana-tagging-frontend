@@ -3,9 +3,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import { searchTags } from '../../services/api';
 
-import SearchAutocomplete from '../common/SearchAutocomplete';
-import SearchFilters from '../search/SearchFilters';
-import SearchResultItem from '../search/SearchResultItem';
+// Import our refactored components
+import SearchBar from './SearchBar';
+import RefineFilters from './RefineFilters';
+import SearchResults from './SearchResults';
+import EmptySearchState from './EmptySearchState';
 
 const SearchResultsPage = () => {
   const navigate = useNavigate();
@@ -26,13 +28,9 @@ const SearchResultsPage = () => {
     khandaId: searchState.filters.khandaId || null,
     adhyayaId: searchState.filters.adhyayaId || null,
     mainTopic: searchState.filters.mainTopic || null,
-    contextSize: searchState.filters.contextSize || 100,
+    contextSize: 100, // Fixed context size
     limit: searchState.filters.limit || 20,
     skip: searchState.filters.skip || 0
-  });
-  const [pagination, setPagination] = useState({
-    total: 0,
-    hasMore: false
   });
 
   // Extract search params from URL on initial load
@@ -59,7 +57,7 @@ const SearchResultsPage = () => {
         khandaId: khandaId ? parseInt(khandaId, 10) : null,
         adhyayaId: adhyayaId ? parseInt(adhyayaId, 10) : null,
         mainTopic: mainTopic || null,
-        contextSize: searchFilters.contextSize,
+        contextSize: 100, // Fixed context size
         limit: searchFilters.limit,
         skip: 0
       });
@@ -97,6 +95,7 @@ const SearchResultsPage = () => {
   const performSearch = async (query, filters) => {
     if (!query || query.trim() === '') return;
 
+    // Log for debugging
     setLoading(true);
     clearError();
 
@@ -110,12 +109,13 @@ const SearchResultsPage = () => {
         skip: filters.skip
       });
 
-      // Update results and pagination info
+      // Make sure we have valid results
+      if (!results || typeof results !== 'object') {
+        throw new Error('Invalid search results received');
+      }
+
+      // Update results in state
       setSearchResults(results);
-      setPagination({
-        total: results.pagination.total,
-        hasMore: results.pagination.has_more
-      });
 
       // Update global search state
       updateSearch({
@@ -141,31 +141,50 @@ const SearchResultsPage = () => {
 
   // Handle search submission
   const handleSearch = (query) => {
+    if (!query || query.trim() === '') return;
+    
+    // Update search query in state
     setSearchQuery(query);
+    
     // Reset pagination on new search
     const updatedFilters = {
       ...searchFilters,
       skip: 0
     };
+    
+    // Update filters in state then perform search
     setSearchFilters(updatedFilters);
-    performSearch(query, updatedFilters);
+    
+    // Perform search with the updated filters
+    setTimeout(() => {
+      performSearch(query, updatedFilters);
+    }, 0);
   };
 
   // Handle filter changes
   const handleFilterChange = (newFilters) => {
+
     // Reset pagination when filters change
     const updatedFilters = {
       ...newFilters,
-      skip: 0
+      skip: 0,
+      contextSize: 100 // Fixed context size
     };
+    
+    // Update filters in state
     setSearchFilters(updatedFilters);
 
-    if (searchQuery.trim() !== '') {
-      performSearch(searchQuery, updatedFilters);
+    // Only perform search if we have a query
+    if (searchQuery && searchQuery.trim() !== '') {
+
+      // Use setTimeout to ensure state is updated before performing search
+      setTimeout(() => {
+        performSearch(searchQuery, updatedFilters);
+      }, 0);
     }
   };
 
-  // Handle pagination
+  // Handle pagination (load more)
   const handleLoadMore = () => {
     const updatedFilters = {
       ...searchFilters,
@@ -175,22 +194,6 @@ const SearchResultsPage = () => {
 
     // Perform search with updated pagination
     performSearch(searchQuery, updatedFilters);
-  };
-
-  // Group results by category for display
-  const getResultsByCategory = () => {
-    if (!searchResults || !searchResults.results_by_category) {
-      return {};
-    }
-    return searchResults.results_by_category;
-  };
-
-  // Get total results count
-  const getTotalResults = () => {
-    if (!searchResults || !searchResults.statistics) {
-      return 0;
-    }
-    return searchResults.statistics.match_count || 0;
   };
 
   // Render loading state
@@ -207,33 +210,8 @@ const SearchResultsPage = () => {
 
   return (
     <div className="min-h-screen bg-amber-50">
-      {/* Header */}
-      <header className="bg-orange-900 text-amber-50 py-4 shadow-md">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
-          <div className="mb-4 md:mb-0 text-center md:text-left">
-            <h1
-              className="text-2xl font-serif font-bold cursor-pointer"
-              onClick={() => navigate('/')}
-            >
-              रामायण तत्त्वानुक्रमणिका
-            </h1>
-            <h2 className="text-lg">Ramayana Tagging Engine</h2>
-          </div>
-
-          {/* Search in header */}
-          <div className="w-full md:w-1/2 lg:w-2/5">
-            <SearchAutocomplete
-              initialValue={searchQuery}
-              onSearch={handleSearch}
-              placeholder="Search for tags like कथा, धर्मः, etc..."
-              suggestionsLimit={5}
-            />
-          </div>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 py-6 max-w-6xl">
-        {/* Search information */}
+        {/* Page title */}
         <div className="mb-6">
           <h2 className="text-2xl font-serif font-bold text-orange-900">
             {searchQuery ? (
@@ -244,15 +222,6 @@ const SearchResultsPage = () => {
               "Search"
             )}
           </h2>
-
-          {searchResults && (
-            <p className="text-orange-800">
-              Found {getTotalResults()} matches across {searchResults.statistics?.tag_count || 0} tags
-              {searchFilters.khandaId && <span> in khanda {searchFilters.khandaId}</span>}
-              {searchFilters.adhyayaId && <span> adhyaya {searchFilters.adhyayaId}</span>}
-              {searchFilters.mainTopic && <span> for topic "{searchFilters.mainTopic}"</span>}
-            </p>
-          )}
         </div>
 
         {/* Error state */}
@@ -263,25 +232,17 @@ const SearchResultsPage = () => {
           </div>
         )}
 
+        {/* Search bar */}
+        <SearchBar initialQuery={searchQuery} onSearch={handleSearch} />
+
         {/* Filters */}
-        <SearchFilters
-          filters={searchFilters}
-          onFilterChange={handleFilterChange}
+        <RefineFilters 
+          filters={searchFilters} 
+          onFilterChange={handleFilterChange} 
         />
 
         {/* Initial empty state */}
-        {!searchQuery && !searchResults && (
-          <div className="bg-white p-8 rounded-lg shadow-sm text-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-orange-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <h3 className="text-xl font-serif font-bold text-orange-800 mb-2">Begin Your Search</h3>
-            <p className="text-orange-700 mb-6 max-w-md mx-auto">
-              Enter a tag name or topic to search through the Ramayana corpus.
-              Try searching for tags like "कथा", "धर्मः", or character names.
-            </p>
-          </div>
-        )}
+        {!searchQuery && !searchResults && <EmptySearchState />}
 
         {/* No results state */}
         {searchQuery && searchResults && searchResults.results.length === 0 && (
@@ -312,51 +273,12 @@ const SearchResultsPage = () => {
           </div>
         )}
 
-        {/* Results by category */}
+        {/* Search results */}
         {searchResults && searchResults.results.length > 0 && (
-          <div className="space-y-8">
-            {Object.entries(getResultsByCategory()).map(([category, results]) => (
-              <div key={category} className="mb-8">
-                <h3 className="text-xl font-serif font-bold text-orange-800 mb-4 border-b border-orange-200 pb-2">
-                  {category}
-                  <span className="text-sm font-normal ml-2 text-orange-600">
-                    ({results.length} tag{results.length !== 1 ? 's' : ''})
-                  </span>
-                </h3>
-
-                <div className="space-y-6">
-                  {results.map((result, index) => (
-                    <SearchResultItem key={`${result.tag_name}-${index}`} result={result} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {searchResults && pagination.hasMore && (
-          <div className="mt-8 text-center">
-            <button
-              onClick={handleLoadMore}
-              disabled={uiState.isLoading}
-              className={`px-6 py-2 bg-orange-700 text-white rounded-lg hover:bg-orange-800 ${
-                uiState.isLoading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {uiState.isLoading ? (
-                <>
-                  <span className="inline-block animate-spin h-4 w-4 border-t-2 border-b-2 border-white rounded-full mr-2"></span>
-                  Loading more...
-                </>
-              ) : (
-                'Load More Results'
-              )}
-            </button>
-            <p className="text-sm text-orange-700 mt-2">
-              Showing {searchResults.results.length} of {pagination.total} tags
-            </p>
-          </div>
+          <SearchResults 
+            results={searchResults} 
+            onLoadMore={handleLoadMore} 
+          />
         )}
       </main>
 

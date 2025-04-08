@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import { fetchAdhyayaContent, fetchTagInAdhyaya } from '../../services/api';
@@ -17,22 +17,42 @@ const AdhyayaReader = () => {
   const adhyayaId = parseInt(adhyaya, 10);
   const highlightTagFromSearch = searchParams.get('tag');
 
-  // Get app context
+  // Track if this is the initial mount
+  const isInitialMount = useRef(true);
+
+  // Get app context with tag management functions
   const {
     khandas,
+    activeContent,
+    setActiveAdhyaya,
     setLoading,
     setError,
     clearError,
     addToCache,
-    getFromCache
+    getFromCache,
+    setActiveTag: setContextActiveTag,
+    setTagDetailsForAdhyaya,
+    getActiveTagForAdhyaya,
+    getTagDetailsForAdhyaya
   } = useAppContext();
 
   // Component state
   const [adhyayaContent, setAdhyayaContent] = useState(null);
-  const [activeTag, setActiveTag] = useState(highlightTagFromSearch || null);
-  const [tagDetailsPanelOpen, setTagDetailsPanelOpen] = useState(!!highlightTagFromSearch);
+  const [activeTag, setActiveTag] = useState(null);
+  const [tagDetailsPanelOpen, setTagDetailsPanelOpen] = useState(false);
   const [tagDetails, setTagDetails] = useState(null);
   const [navigationSidebarOpen, setNavigationSidebarOpen] = useState(true);
+
+  // Update active adhyaya in context when component mounts or route changes
+  useEffect(() => {
+    // Set the active adhyaya in context
+    setActiveAdhyaya(khandaId, adhyayaId);
+    
+    // For cleaner code tracking
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    }
+  }, [khandaId, adhyayaId, setActiveAdhyaya]);
 
   // Function to fetch adhyaya content from API or cache
   const fetchContent = async () => {
@@ -43,9 +63,21 @@ const AdhyayaReader = () => {
 
     if (cachedData) {
       setAdhyayaContent(cachedData);
-      // If we have a tag from search params, highlight it
-      if (highlightTagFromSearch) {
-        handleTagClick(highlightTagFromSearch);
+      
+      // Get tag to activate - prioritize URL param, then context
+      let tagToActivate = highlightTagFromSearch;
+      
+      if (!tagToActivate) {
+        // Check context for a stored tag
+        const storedTagName = getActiveTagForAdhyaya(khandaId, adhyayaId);
+        tagToActivate = storedTagName;
+      }
+      
+      // If we have a tag to activate, do it after a longer delay to ensure DOM is ready
+      if (tagToActivate) {
+        setTimeout(() => {
+          handleTagClick(tagToActivate);
+        }, 500);
       }
       return;
     }
@@ -58,9 +90,20 @@ const AdhyayaReader = () => {
       setAdhyayaContent(data);
       addToCache('adhyayaContent', cacheKey, data);
 
-      // If we have a tag from search params, highlight it
-      if (highlightTagFromSearch) {
-        handleTagClick(highlightTagFromSearch);
+      // Get tag to activate - prioritize URL param, then context
+      let tagToActivate = highlightTagFromSearch;
+      
+      if (!tagToActivate) {
+        // Check context for a stored tag
+        const storedTagName = getActiveTagForAdhyaya(khandaId, adhyayaId);
+        tagToActivate = storedTagName;
+      }
+      
+      // If we have a tag to activate, do it after a longer delay to ensure DOM is ready
+      if (tagToActivate) {
+        setTimeout(() => {
+          handleTagClick(tagToActivate);
+        }, 500);
       }
     } catch (error) {
       console.error('Error fetching adhyaya content:', error);
@@ -73,12 +116,51 @@ const AdhyayaReader = () => {
   // Fetch adhyaya content when component mounts or parameters change
   useEffect(() => {
     fetchContent();
+    
+    // Sync component state with context on mount and parameter changes
+    const storedTag = getActiveTagForAdhyaya(khandaId, adhyayaId);
+    const storedDetails = getTagDetailsForAdhyaya(khandaId, adhyayaId);
+    
 
-    // Reset active tag when changing adhyaya
-    setActiveTag(highlightTagFromSearch || null);
-    setTagDetailsPanelOpen(!!highlightTagFromSearch);
-    setTagDetails(null);
-  }, [khandaId, adhyayaId]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Set active tag based on either URL parameter or stored value
+    const newActiveTag = highlightTagFromSearch || (storedTag || null);
+    
+    if (newActiveTag) {
+      // We have an active tag to set
+      console.log(`Setting active tag in AdhyayaReader to:`, newActiveTag);
+      setActiveTag(newActiveTag);
+      setTagDetailsPanelOpen(true);
+      
+      // If we have stored details, use them
+      if (storedDetails) {
+        setTagDetails(storedDetails);
+      }
+    } else {
+      // Reset when changing to a new adhyaya with no active tag
+      setActiveTag(null);
+      setTagDetailsPanelOpen(false);
+      setTagDetails(null);
+    }
+  }, [khandaId, adhyayaId, highlightTagFromSearch]);
+
+  // Handle scrolling to tags when content and tags are loaded
+  useEffect(() => {
+    // Only proceed if we have content loaded
+    if (!adhyayaContent) return;
+    
+    // Get the current active tag
+    const currentActiveTag = activeTag || 
+                           highlightTagFromSearch || 
+                           getActiveTagForAdhyaya(khandaId, adhyayaId);
+    
+    if (currentActiveTag) {
+      // Trigger scrolling to the highlighted tag with a longer delay
+      setTimeout(() => {
+        const scrollEvent = new CustomEvent('scrollToFirstHighlight');
+        window.dispatchEvent(scrollEvent);
+      }, 1000);
+    }
+  }, [adhyayaContent, activeTag, highlightTagFromSearch, khandaId, adhyayaId]);
 
   // Handle tag click - fetch tag details and highlight in text
   const handleTagClick = async (tagName) => {
@@ -87,15 +169,26 @@ const AdhyayaReader = () => {
     try {
       // If clicking the already active tag, toggle it off
       if (activeTag === tagName) {
+        // Clear active tag in both local and context state
         setActiveTag(null);
         setTagDetails(null);
         setTagDetailsPanelOpen(false);
+        
+        // Update the context to clear this tag
+        setContextActiveTag(null);
         return;
       }
 
+      // Set the active tag immediately for better UX
+      setActiveTag(tagName);
+      setTagDetailsPanelOpen(true);
+      
+      // Update context as well
+      setContextActiveTag(tagName);
+      
       setLoading(true);
 
-      // Get tag details from API
+      // Get tag details from API or cache
       const cacheKey = `${khandaId}_${adhyayaId}_${tagName}`;
       const cachedDetails = getFromCache('tagDetails', cacheKey);
 
@@ -104,15 +197,50 @@ const AdhyayaReader = () => {
         details = cachedDetails;
       } else {
         details = await fetchTagInAdhyaya(khandaId, adhyayaId, tagName);
+        
+        // Add index property to each occurrence to help with positioning
+        if (details?.occurrences && details.occurrences.length > 0) {
+          details.occurrences.forEach((occ, idx) => {
+            occ.index = idx;
+          });
+        }
+        
         addToCache('tagDetails', cacheKey, details);
       }
 
+      // Set up local component state
       setTagDetails(details);
-      setActiveTag(tagName);
-      setTagDetailsPanelOpen(true);
+      
+      // Store details in context
+      setTagDetailsForAdhyaya(khandaId, adhyayaId, details);
+      
+      // Scroll to first occurrence
+      if (details?.occurrences && details.occurrences.length > 0) {
+        const firstOccurrence = details.occurrences[0];
+        
+        // Use a longer timeout to allow the rendering to complete
+        setTimeout(() => {
+          // Dispatch custom event to scroll to occurrence
+          const scrollEvent = new CustomEvent('scrollToOccurrence', { 
+            detail: { occurrence: firstOccurrence }
+          });
+          window.dispatchEvent(scrollEvent);
+        }, 1000); 
+      } else {
+        // If no specific occurrences, just scroll to first highlight with longer delay
+        setTimeout(() => {
+          const scrollEvent = new CustomEvent('scrollToFirstHighlight');
+          window.dispatchEvent(scrollEvent);
+        }, 1000);
+      }
     } catch (error) {
       console.error('Error fetching tag details:', error);
       setError(`Failed to load details for tag "${tagName}"`);
+      
+      // Reset active tag on error
+      setActiveTag(null);
+      setTagDetailsPanelOpen(false);
+      setContextActiveTag(null);
     } finally {
       setLoading(false);
     }
@@ -136,62 +264,49 @@ const AdhyayaReader = () => {
   }
 
   return (
-    <div className="min-h-screen bg-amber-50 flex flex-col">
-      {/* Header that spans the full width */}
-      <header className="bg-orange-900 text-amber-50 py-4 shadow-md">
-        <div className="container mx-auto px-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-serif font-bold cursor-pointer" onClick={() => navigate('/')}>
-              रामायण तत्त्वानुक्रमणिका
-            </h1>
-            <h2 className="text-lg">Ramayana Tagging Engine</h2>
-          </div>
-
-          {/* Search link */}
-          <div>
-            <button
-              className="px-4 py-2 rounded-full border-2 border-orange-300 text-white hover:bg-orange-800 transition"
-              onClick={() => navigate('/search')}
-            >
-              Search Tags
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main content with three columns layout */}
-      <main className="flex-grow flex overflow-hidden">
+    <div className="h-screen bg-amber-50 flex flex-col overflow-hidden">
+      {/* Main content with three columns layout - fixed height */}
+      <main className="flex h-full overflow-hidden">
         {/* Left Sidebar - Navigation */}
-        <NavigationSidebar
-          khandas={khandas}
-          currentKhandaId={khandaId}
-          currentAdhyayaId={adhyayaId}
-          isOpen={navigationSidebarOpen}
-          onToggle={toggleNavigationSidebar}
-        />
+        <div className="h-full w-64 flex-shrink-0">
+          <NavigationSidebar
+            khandas={khandas}
+            currentKhandaId={khandaId}
+            currentAdhyayaId={adhyayaId}
+            isOpen={navigationSidebarOpen}
+            onToggle={toggleNavigationSidebar}
+          />
+        </div>
 
-        {/* Main Content Area */}
-        <MainContent
-          adhyayaContent={adhyayaContent}
-          activeTag={activeTag}
-          tagDetails={tagDetails}
-          tagDetailsPanelOpen={tagDetailsPanelOpen}
-          onTagDetailsPanelClose={() => {
-            setTagDetailsPanelOpen(false);
-            setActiveTag(null);
-          }}
-          khandaId={khandaId}
-          adhyayaId={adhyayaId}
-          navigationSidebarOpen={navigationSidebarOpen}
-          toggleNavigationSidebar={toggleNavigationSidebar}
-        />
+        {/* Main Content Area - fixed container, scrollable content */}
+        <div className="flex-grow h-full overflow-hidden">
+          <MainContent
+            adhyayaContent={adhyayaContent}
+            activeTag={activeTag}
+            tagDetails={tagDetails}
+            tagDetailsPanelOpen={tagDetailsPanelOpen}
+            onTagDetailsPanelClose={() => {
+              setTagDetailsPanelOpen(false);
+              setActiveTag(null);
+              // Clear in context as well
+              setContextActiveTag(null);
+            }}
+            khandaId={khandaId}
+            adhyayaId={adhyayaId}
+            navigationSidebarOpen={navigationSidebarOpen}
+            toggleNavigationSidebar={toggleNavigationSidebar}
+          />
+        </div>
 
         {/* Right Sidebar - Tags List */}
-        <TagSidebar
-          structuredTags={adhyayaContent.structured_tags}
-          activeTag={activeTag}
-          onTagClick={handleTagClick}
-        />
+        <div className="h-full w-80 flex-shrink-0">
+          <TagSidebar
+            structuredTags={adhyayaContent.structured_tags}
+            activeTag={activeTag}
+            tagDetails={tagDetails}
+            onTagClick={handleTagClick}
+          />
+        </div>
       </main>
     </div>
   );

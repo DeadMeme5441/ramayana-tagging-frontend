@@ -7,9 +7,15 @@ const SearchAutocomplete = ({
   onSearch,
   placeholder = 'Search for tags...',
   suggestionsLimit = 10,
-  className = ''
+  className = '',
+  manualQueryUpdate = null
 }) => {
   const [inputValue, setInputValue] = useState(initialValue);
+  
+  // Update input value when initialValue changes
+  useEffect(() => {
+    setInputValue(initialValue);
+  }, [initialValue]);
   const [suggestions, setSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -74,9 +80,15 @@ const SearchAutocomplete = ({
   }, []);
 
   const handleInputChange = (e) => {
-    setInputValue(e.target.value);
+    const newValue = e.target.value;
+    setInputValue(newValue);
     setShowSuggestions(true);
     setSelectedIndex(-1);
+    
+    // If manual update function provided, call it
+    if (manualQueryUpdate) {
+      manualQueryUpdate(newValue);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -95,6 +107,10 @@ const SearchAutocomplete = ({
       if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
         handleSuggestionClick(suggestions[selectedIndex]);
       } else {
+        // Update parent component if manualQueryUpdate is provided
+        if (manualQueryUpdate) {
+          manualQueryUpdate(inputValue);
+        }
         handleSearch();
       }
     } else if (e.key === 'Escape') {
@@ -107,6 +123,12 @@ const SearchAutocomplete = ({
     setInputValue(suggestion.name);
     setShowSuggestions(false);
     setSelectedIndex(-1);
+    
+    // Update parent component if manualQueryUpdate is provided
+    if (manualQueryUpdate) {
+      manualQueryUpdate(suggestion.name);
+    }
+    
     if (onSearch) {
       onSearch(suggestion.name);
     }

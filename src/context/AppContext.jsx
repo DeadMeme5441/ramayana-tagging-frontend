@@ -22,22 +22,25 @@ export const useAppContext = () => {
  * Provider component for AppContext
  */
 export const AppProvider = ({ children }) => {
-  // Khandas data
+  // Kaandas data
   const [khandas, setKhandas] = useState([]);
 
   // Active content state
   const [activeContent, setActiveContent] = useState({
-    khandaId: null,
-    adhyayaId: null,
+    khandaId: null,    // kaandaId
+    adhyayaId: null,   // sargaId
     activeTag: null
   });
+  
+  // Track active tags by kaanda & sarga
+  const [activeTags, setActiveTags] = useState({});  // Format: { 'kaandaId_sargaId': { tagName, tagDetails } }
 
   // Search state
   const [searchState, setSearchState] = useState({
     query: '',
     filters: {
-      khandaId: null,
-      adhyayaId: null,
+      khandaId: null,     // kaandaId
+      adhyayaId: null,    // sargaId
       mainTopic: null,
       contextSize: 100,
       limit: 20,
@@ -57,8 +60,8 @@ export const AppProvider = ({ children }) => {
 
   // Cache state for performance
   const [cache, setCache] = useState({
-    adhyayaContent: {}, // Key format: `${khandaId}_${adhyayaId}`
-    tagDetails: {},     // Key format: `${khandaId}_${adhyayaId}_${tagName}`
+    adhyayaContent: {}, // Key format: `${kaandaId}_${sargaId}`
+    tagDetails: {},     // Key format: `${kaandaId}_${sargaId}_${tagName}`
     searchResults: {}   // Key format based on search params
   });
 
@@ -94,32 +97,108 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   /**
-   * Set active khanda and adhyaya
+   * Set active kaanda and sarga
    */
   const setActiveAdhyaya = useCallback((khandaId, adhyayaId) => {
+    // Check if there's a stored tag for this sarga
+    const key = `${khandaId}_${adhyayaId}`;
+    const storedTagInfo = activeTags[key];
+    
     setActiveContent(prev => ({
       ...prev,
       khandaId,
       adhyayaId,
-      activeTag: null // Reset active tag when changing adhyaya
+      // Use the stored tag if available, otherwise null
+      activeTag: storedTagInfo?.tagName || null
     }));
-  }, []);
+    
+    // If there's a stored tag, also make sure the tag panel is open
+    if (storedTagInfo?.tagName) {
+      setUiState(prev => ({
+        ...prev,
+        tagDetailsPanelOpen: true
+      }));
+    }
+  }, [activeTags]);
 
   /**
-   * Set active tag within current adhyaya
+   * Set active tag within current sarga
    */
   const setActiveTag = useCallback((tagName) => {
+    // Update the active content state
     setActiveContent(prev => ({
       ...prev,
       activeTag: tagName
     }));
+
+    // If we have current kaanda and sarga, also store in the per-sarga state
+    if (activeContent.khandaId && activeContent.adhyayaId) {
+      const key = `${activeContent.khandaId}_${activeContent.adhyayaId}`;
+      
+      if (tagName) {
+        // Set the tag for this kaanda/sarga
+        setActiveTags(prev => ({
+          ...prev,
+          [key]: {
+            ...prev[key],
+            tagName
+          }
+        }));
+      } else {
+        // Clear the tag for this kaanda/sarga
+        setActiveTags(prev => {
+          // Create a new object without this entry
+          const newState = { ...prev };
+          delete newState[key];
+          return newState;
+        });
+      }
+    }
 
     // Open tag details panel when a tag is selected
     setUiState(prev => ({
       ...prev,
       tagDetailsPanelOpen: !!tagName
     }));
+  }, [activeContent.khandaId, activeContent.adhyayaId]);
+  
+  /**
+   * Set tag details for a specific kaanda/sarga
+   */
+  const setTagDetailsForAdhyaya = useCallback((khandaId, adhyayaId, tagDetails) => {
+    if (!khandaId || !adhyayaId || !tagDetails) return;
+    
+    const key = `${khandaId}_${adhyayaId}`;
+
+    setActiveTags(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        tagName: tagDetails.tag_name, // Also set tagName from tagDetails
+        tagDetails
+      }
+    }));
   }, []);
+  
+  /**
+   * Get active tag for a specific kaanda/sarga
+   */
+  const getActiveTagForAdhyaya = useCallback((khandaId, adhyayaId) => {
+    if (!khandaId || !adhyayaId) return null;
+    
+    const key = `${khandaId}_${adhyayaId}`;
+    return activeTags[key]?.tagName || null;
+  }, [activeTags]);
+  
+  /**
+   * Get tag details for a specific kaanda/sarga
+   */
+  const getTagDetailsForAdhyaya = useCallback((khandaId, adhyayaId) => {
+    if (!khandaId || !adhyayaId) return null;
+    
+    const key = `${khandaId}_${adhyayaId}`;
+    return activeTags[key]?.tagDetails || null;
+  }, [activeTags]);
 
   /**
    * Toggle sidebar visibility
@@ -192,22 +271,22 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
-  // Load khandas structure on component mount
+  // Load kaandas structure on component mount
   useEffect(() => {
-    const loadKhandas = async () => {
+    const loadKaandas = async () => {
       try {
         setLoading(true);
         const data = await fetchKhandasStructure();
         setKhandas(data.khandas || []);
       } catch (error) {
-        setError(error.message || 'Failed to load khandas structure');
-        console.error('Error loading khandas structure:', error);
+        setError(error.message || 'Failed to load kaandas structure');
+        console.error('Error loading kaandas structure:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadKhandas();
+    loadKaandas();
   }, [setLoading, setError]);
 
   // Context value
@@ -217,6 +296,7 @@ export const AppProvider = ({ children }) => {
     activeContent,
     searchState,
     uiState,
+    activeTags,
 
     // Setters
     setKhandas,
@@ -228,6 +308,11 @@ export const AppProvider = ({ children }) => {
     clearError,
     toggleSidebar,
     toggleTagDetailsPanel,
+    
+    // Adhyaya-specific tag functions
+    setTagDetailsForAdhyaya,
+    getActiveTagForAdhyaya,
+    getTagDetailsForAdhyaya,
 
     // Cache functions
     addToCache,
