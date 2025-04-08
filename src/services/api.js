@@ -214,3 +214,24 @@ export const triggerReindexing = async (apiKey) => {
   });
 };
 
+
+/**
+ * Fetch tag suggestions for autocomplete
+ *
+ * @param {string} query - Partial text to get suggestions for
+ * @param {number} [limit=10] - Maximum number of suggestions to return
+ * @returns {Promise<Object>} - Tag suggestions for autocomplete
+ */
+export const fetchTagSuggestions = async (query, limit = 10) => {
+  if (!query || query.trim().length < 2) {
+    return { suggestions: [] };
+  }
+
+  const queryParams = new URLSearchParams({
+    query: query.trim(),
+    limit
+  });
+
+  return fetchWithErrorHandling(`/tags/suggestions?${queryParams.toString()}`);
+};
+
