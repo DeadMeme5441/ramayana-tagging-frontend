@@ -39,13 +39,13 @@ const SargaHeader = ({
 
         {/* Title - center */}
         <div className="flex-grow text-center mx-4">
-          <h2 className="text-2xl font-serif font-bold text-orange-900">
+          <h2 className="text-3xl font-serif font-bold text-orange-900">
             ॥ श्रीमद्वाल्मीकीयरामायणम् ॥
           </h2>
-          <h2 className="text-xl font-serif font-bold text-orange-900">
+          <h2 className="text-2xl font-serif font-bold text-orange-900">
             ॥ {kaandaName} ॥
           </h2>
-          <h3 className="text-l font-serif text-orange-800 mt-1">
+          <h3 className="text-xl font-serif text-orange-800 mt-1">
             ॥ {sargaTitle} ॥
           </h3>
         </div>

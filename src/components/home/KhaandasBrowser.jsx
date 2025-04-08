@@ -90,7 +90,7 @@ const KhaandasBrowser = () => {
                           onClick={() => handleAdhyayaClick(kaanda.id, sarga.id)}
                           className="px-3 py-2 bg-white text-orange-800 border border-orange-200 rounded-md font-serif text-sm hover:bg-orange-100 transition text-left truncate"
                         >
-                          {sarga.title || `Sarga ${sarga.number}`}
+                          {sarga.id}. {sarga.title || `Sarga ${sarga.number}`}
                         </button>
                       ))}
                       {kaanda.adhyayas.length > 6 && (
