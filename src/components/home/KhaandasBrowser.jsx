@@ -36,7 +36,7 @@ const KhaandasBrowser = () => {
   return (
     <>
       <h2 className="text-2xl font-serif font-bold text-orange-900 mb-4">
-        Browse Khaandas
+        Browse Kaandas
       </h2>
       <p className="text-orange-800 mb-6 text-sm">
         The Ramayana is divided into 7 kaandas (sections) containing sargas (chapters).

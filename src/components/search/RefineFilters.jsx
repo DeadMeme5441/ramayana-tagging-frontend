@@ -148,13 +148,13 @@ const RefineFilters = ({ filters, onFilterChange }) => {
           {expandedSection === 'location' && (
             <div className="p-4">
               <div className="mb-3">
-                <label className="block text-sm text-orange-700 mb-1">Khanda</label>
+                <label className="block text-sm text-orange-700 mb-1">Kaanda</label>
                 <select
                   value={filters.khandaId || ''}
                   onChange={handleKhandaChange}
                   className="w-full p-2 border border-orange-200 rounded bg-amber-50"
                 >
-                  <option value="">All Khandas</option>
+                  <option value="">All Kaandas</option>
                   {khandas.map(khanda => (
                     <option key={khanda.id} value={khanda.id}>
                       {khanda.name}
@@ -226,13 +226,13 @@ const RefineFilters = ({ filters, onFilterChange }) => {
         <div className="grid md:grid-cols-3 gap-4">
           {/* Khanda filter */}
           <div>
-            <label className="block text-sm text-orange-700 mb-1">Khanda</label>
+            <label className="block text-sm text-orange-700 mb-1">Kaanda</label>
             <select
               value={filters.khandaId || ''}
               onChange={handleKhandaChange}
               className="w-full p-2 border border-orange-200 rounded bg-amber-50"
             >
-              <option value="">All Khandas</option>
+              <option value="">All Kaandas</option>
               {khandas.map(khanda => (
                 <option key={khanda.id} value={khanda.id}>
                   {khanda.name}
